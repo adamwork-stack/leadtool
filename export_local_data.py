@@ -59,7 +59,6 @@ def export_data():
         contacts_data = []
         for contact in contacts:
             contacts_data.append({
-                'email': contact.email,
                 'phone': contact.phone,
                 'first_name': contact.first_name,
                 'last_name': contact.last_name,

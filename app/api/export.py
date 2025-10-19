@@ -56,7 +56,6 @@ async def export_companies(
 @router.get("/export/contacts")
 async def export_contacts(
     format: str = Query("csv", regex="^(csv|excel)$"),
-    email: Optional[str] = None,
     company_id: Optional[int] = None,
     title: Optional[str] = None,
     department: Optional[str] = None,
@@ -67,8 +66,6 @@ async def export_contacts(
     query = db.query(Contact)
     
     # Apply filters
-    if email:
-        query = query.filter(Contact.email.ilike(f"%{email}%"))
     if company_id:
         query = query.filter(Contact.company_id == company_id)
     if title:
@@ -148,7 +145,7 @@ def export_contacts_csv(contacts):
     
     # Write header
     writer.writerow([
-        'ID', 'Company ID', 'Email', 'Phone', 'First Name', 'Last Name',
+        'ID', 'Company ID', 'Phone', 'First Name', 'Last Name',
         'Title', 'Department', 'Address', 'LinkedIn', 'Is Primary', 'Created At'
     ])
     
@@ -157,7 +154,6 @@ def export_contacts_csv(contacts):
         writer.writerow([
             contact.id,
             contact.company_id,
-            contact.email,
             contact.phone,
             contact.first_name,
             contact.last_name,
@@ -184,7 +180,7 @@ def export_combined_csv(companies):
     # Write header
     writer.writerow([
         'Company ID', 'Company Name', 'Company Domain', 'Company Industry', 'Company Location',
-        'Contact ID', 'Contact Email', 'Contact Phone', 'Contact Name', 'Contact Title',
+        'Contact ID', 'Contact Phone', 'Contact Name', 'Contact Title',
         'Contact Department', 'Is Primary Contact'
     ])
     
@@ -199,7 +195,6 @@ def export_combined_csv(companies):
                     company.industry,
                     company.location,
                     contact.id,
-                    contact.email,
                     contact.phone,
                     f"{contact.first_name} {contact.last_name}".strip(),
                     contact.title,
@@ -255,7 +250,6 @@ def export_contacts_excel(contacts):
     df = pd.DataFrame([{
         'ID': contact.id,
         'Company ID': contact.company_id,
-        'Email': contact.email,
         'Phone': contact.phone,
         'First Name': contact.first_name,
         'Last Name': contact.last_name,
@@ -291,7 +285,6 @@ def export_combined_excel(companies):
                     'Company Industry': company.industry,
                     'Company Location': company.location,
                     'Contact ID': contact.id,
-                    'Contact Email': contact.email,
                     'Contact Phone': contact.phone,
                     'Contact Name': f"{contact.first_name} {contact.last_name}".strip(),
                     'Contact Title': contact.title,
@@ -306,7 +299,6 @@ def export_combined_excel(companies):
                 'Company Industry': company.industry,
                 'Company Location': company.location,
                 'Contact ID': '',
-                'Contact Email': '',
                 'Contact Phone': '',
                 'Contact Name': '',
                 'Contact Title': '',

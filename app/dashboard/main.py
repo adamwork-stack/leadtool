@@ -69,16 +69,16 @@ def show_overview():
         
         with col3:
             st.metric(
-                label="Contacts with Emails",
-                value=contact_stats.get("contacts_with_emails", 0)
+                label="Contacts with Phones",
+                value=contact_stats.get("contacts_with_phones", 0)
             )
         
         with col4:
-            email_rate = (contact_stats.get("contacts_with_emails", 0) / 
+            phone_rate = (contact_stats.get("contacts_with_phones", 0) / 
                          max(contact_stats.get("total_contacts", 1), 1)) * 100
             st.metric(
-                label="Email Coverage",
-                value=f"{email_rate:.1f}%"
+                label="Phone Coverage",
+                value=f"{phone_rate:.1f}%"
             )
         
         # Charts
@@ -220,7 +220,7 @@ def show_search():
         col1, col2 = st.columns(2)
         
         with col1:
-            contact_email = st.text_input("Email")
+            contact_phone = st.text_input("Phone")
             contact_company_id = st.number_input("Company ID", min_value=1, value=None)
         
         with col2:
@@ -233,8 +233,8 @@ def show_search():
             try:
                 # Build query parameters
                 params = {}
-                if contact_email:
-                    params["email"] = contact_email
+                if contact_phone:
+                    params["phone"] = contact_phone
                 if contact_company_id:
                     params["company_id"] = contact_company_id
                 if contact_title:
@@ -254,7 +254,6 @@ def show_search():
                     for contact in contacts:
                         contact_data.append({
                             "ID": contact["id"],
-                            "Email": contact.get("email", ""),
                             "Phone": contact.get("phone", ""),
                             "Name": f"{contact.get('first_name', '')} {contact.get('last_name', '')}".strip(),
                             "Title": contact.get("title", ""),
@@ -319,7 +318,7 @@ def show_export():
         col1, col2 = st.columns(2)
         
         with col1:
-            contact_email = st.text_input("Email Filter")
+            contact_phone = st.text_input("Phone Filter")
             contact_title = st.text_input("Title Filter")
         
         with col2:
@@ -351,8 +350,8 @@ def show_export():
                 params = {
                     "format": export_format.lower()
                 }
-                if contact_email:
-                    params["email"] = contact_email
+                if contact_phone:
+                    params["phone"] = contact_phone
                 if contact_title:
                     params["title"] = contact_title
                 if contact_department:

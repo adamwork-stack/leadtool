@@ -68,7 +68,6 @@ class Contact(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
-    email = Column(String(255), nullable=True, index=True)
     phone = Column(String(50), nullable=True)
     first_name = Column(String(100), nullable=True)
     last_name = Column(String(100), nullable=True)
@@ -85,7 +84,6 @@ class Contact(Base):
     
     # Indexes for performance
     __table_args__ = (
-        Index('idx_contact_email_company', 'email', 'company_id'),
         Index('idx_contact_company_id', 'company_id'),
     )
 
@@ -97,7 +95,7 @@ class MonthlyData(Base):
     id = Column(Integer, primary_key=True, index=True)
     company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
     month_key = Column(String(7), nullable=False, index=True)  # Format: "2025-01"
-    data_type = Column(String(50), nullable=False)  # "company", "contact", "email"
+    data_type = Column(String(50), nullable=False)  # "company", "contact"
     raw_data = Column(Text, nullable=True)  # JSON string of scraped data
     source_url = Column(String(1000), nullable=True)
     query_name = Column(String(255), nullable=True)  # Google Maps search query name

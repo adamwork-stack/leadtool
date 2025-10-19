@@ -38,16 +38,16 @@ def show_overview():
         
         with col3:
             st.metric(
-                label="Contacts with Emails",
-                value=contact_stats.get("contacts_with_emails", 0)
+                label="Contacts with Phones",
+                value=contact_stats.get("contacts_with_phones", 0)
             )
         
         with col4:
-            email_rate = (contact_stats.get("contacts_with_emails", 0) / 
+            phone_rate = (contact_stats.get("contacts_with_phones", 0) / 
                          max(contact_stats.get("total_contacts", 1), 1)) * 100
             st.metric(
-                label="Email Coverage",
-                value=f"{email_rate:.1f}%"
+                label="Phone Coverage",
+                value=f"{phone_rate:.1f}%"
             )
         
         # Charts

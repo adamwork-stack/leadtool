@@ -55,7 +55,7 @@ def show_export():
         col1, col2 = st.columns(2)
         
         with col1:
-            contact_email = st.text_input("Email Filter")
+            contact_phone = st.text_input("Phone Filter")
             contact_title = st.text_input("Title Filter")
         
         with col2:
@@ -87,8 +87,8 @@ def show_export():
                 params = {
                     "format": export_format.lower()
                 }
-                if contact_email:
-                    params["email"] = contact_email
+                if contact_phone:
+                    params["phone"] = contact_phone
                 if contact_title:
                     params["title"] = contact_title
                 if contact_department:

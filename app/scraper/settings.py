@@ -32,13 +32,15 @@ DOWNLOADER_MIDDLEWARES = {
 # Playwright settings
 PLAYWRIGHT_BROWSER_TYPE = 'chromium'
 PLAYWRIGHT_LAUNCH_OPTIONS = {
-    'headless': True,
+    'headless': False,  # Set to False to see the browser window
+    'slow_mo': 2000,  # Slow down actions by 2 seconds so you can see them
     'args': [
         '--no-sandbox',
         '--disable-dev-shm-usage',
         '--disable-gpu',
         '--disable-web-security',
-        '--disable-features=VizDisplayCompositor'
+        '--disable-features=VizDisplayCompositor',
+        '--start-maximized'  # Start browser maximized
     ]
 }
 

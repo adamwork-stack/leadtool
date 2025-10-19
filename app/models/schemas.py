@@ -1,7 +1,7 @@
 """
 Pydantic schemas for LeadTool API
 """
-from pydantic import BaseModel, EmailStr, HttpUrl
+from pydantic import BaseModel, HttpUrl
 from typing import Optional, List
 from datetime import datetime
 
@@ -42,7 +42,6 @@ class Company(CompanyBase):
 
 # Contact schemas
 class ContactBase(BaseModel):
-    email: Optional[str] = None
     phone: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
@@ -58,7 +57,6 @@ class ContactCreate(ContactBase):
 
 
 class ContactUpdate(BaseModel):
-    email: Optional[str] = None
     phone: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
@@ -120,7 +118,6 @@ class CompanyFilter(BaseModel):
 
 
 class ContactFilter(BaseModel):
-    email: Optional[str] = None
     company_id: Optional[int] = None
     title: Optional[str] = None
     department: Optional[str] = None

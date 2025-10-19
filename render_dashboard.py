@@ -50,17 +50,6 @@ def main():
     # Debug info
     st.sidebar.info("✅ Using render_dashboard.py (Render Optimized)")
     
-    # Add scraping controls
-    st.sidebar.header("🕷️ Scraping Controls")
-    
-    if st.sidebar.button("🚀 Run Scraper", type="primary"):
-        with st.spinner("Running scraper..."):
-            success, message = run_scraper()
-            if success:
-                st.sidebar.success(message)
-                st.rerun()  # Refresh the page to show new data
-            else:
-                st.sidebar.error(message)
     
     # Show last scraping info
     st.sidebar.markdown("---")
@@ -87,32 +76,31 @@ def main():
         show_sample_data()
         return
     
-    # Check if database is empty and show sample data option
+    # Check if database is empty
     if DATABASE_AVAILABLE:
         db = SessionLocal()
         try:
             company_count = db.query(Company).count()
             if company_count == 0:
-                st.warning("Database is empty. You can either:")
-                st.markdown("""
-                **Option 1: Use Sample Data**
-                - Click the button below to load sample data
-                - Good for demo purposes
-                - No scraping required
-                
-                **Option 2: Run Scraper**
-                - Use the scraping button in the sidebar
-                - May timeout on free Render tier
-                - Better for paid Render plans
-                """)
-                
-                if st.button("📊 Load Sample Data", type="primary"):
-                    load_sample_data()
-                    st.rerun()
+                st.warning("Database is empty. Use the scraper to collect real data.")
+                st.info("Click the 'Run Scraper' button in the sidebar to start collecting data.")
         except Exception as e:
             st.error(f"Database error: {e}")
         finally:
             db.close()
+    
+    # Add manual scraping options
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("Manual Search")
+    
+    if st.sidebar.button("🚀 Run Scraper", type="primary"):
+        with st.spinner("Running scraper..."):
+            success, message = run_scraper()
+            if success:
+                st.sidebar.success(message)
+                st.rerun()  # Refresh the page to show new data
+            else:
+                st.sidebar.error(message)
     
     # Get data directly from database
     db = SessionLocal()
@@ -136,12 +124,12 @@ def main():
             st.metric("Total Contacts", len(contacts))
         
         with col3:
-            contacts_with_emails = len([c for c in contacts if c.email])
-            st.metric("Contacts with Emails", contacts_with_emails)
+            contacts_with_phones = len([c for c in contacts if c.phone])
+            st.metric("Contacts with Phones", contacts_with_phones)
         
         with col4:
-            email_rate = (contacts_with_emails / max(len(contacts), 1)) * 100
-            st.metric("Email Coverage", f"{email_rate:.1f}%")
+            phone_rate = (contacts_with_phones / max(len(contacts), 1)) * 100
+            st.metric("Phone Coverage", f"{phone_rate:.1f}%")
         
         # Display companies table
         st.subheader("Companies")
@@ -153,8 +141,8 @@ def main():
                     "Name": company.name,
                     "Category": company.category or "N/A",
                     "Address": company.address or "N/A",
-                    "Phone": company.phone or "N/A",
                     "Website": company.website or "N/A",
+                    "Phone": company.phone or "N/A",
                     "Rating": company.rating or "N/A",
                     "Review Count": company.review_count or "N/A",
                     "Source": company.source or "N/A"
@@ -235,106 +223,12 @@ def main():
 
 def load_sample_data():
     """Load sample data into the database"""
-    if not DATABASE_AVAILABLE:
-        st.error("Database not available")
-        return
-    
-    db = SessionLocal()
-    try:
-        # Sample companies
-        sample_companies = [
-            {
-                'name': 'Mario\'s Italian Restaurant',
-                'category': 'Restaurant',
-                'address': '123 Main St, New York, NY 10001',
-                'phone': '+1-555-0123',
-                'website': 'https://marios-italian.com',
-                'rating': '4.5',
-                'review_count': 150,
-                'source': 'Google Maps'
-            },
-            {
-                'name': 'Tokyo Sushi Bar',
-                'category': 'Restaurant',
-                'address': '456 Broadway, New York, NY 10002',
-                'phone': '+1-555-0456',
-                'website': 'https://tokyo-sushi.com',
-                'rating': '4.2',
-                'review_count': 89,
-                'source': 'Google Maps'
-            },
-            {
-                'name': 'Burger Palace',
-                'category': 'Restaurant',
-                'address': '789 5th Ave, New York, NY 10003',
-                'phone': '+1-555-0789',
-                'website': 'https://burger-palace.com',
-                'rating': '4.8',
-                'review_count': 203,
-                'source': 'Google Maps'
-            },
-            {
-                'name': 'Joe\'s Plumbing Service',
-                'category': 'Plumbing',
-                'address': '321 Oak St, Los Angeles, CA 90210',
-                'phone': '+1-555-0321',
-                'website': 'https://joes-plumbing.com',
-                'rating': '4.7',
-                'review_count': 67,
-                'source': 'Google Maps'
-            },
-            {
-                'name': 'Smith & Associates Law',
-                'category': 'Law Firm',
-                'address': '654 Pine St, Miami, FL 33101',
-                'phone': '+1-555-0654',
-                'website': 'https://smith-law.com',
-                'rating': '4.9',
-                'review_count': 45,
-                'source': 'Google Maps'
-            }
-        ]
-        
-        # Add companies to database
-        for company_data in sample_companies:
-            company = Company(**company_data)
-            db.add(company)
-        
-        # Add monthly data
-        for i, company_data in enumerate(sample_companies):
-            monthly_data = MonthlyData(
-                company_id=i+1,
-                month_key=datetime.now().strftime("%Y-%m"),
-                data_type='company',
-                raw_data=str(company_data),
-                source_url='https://www.google.com/maps',
-                query_name='Sample Data',
-                is_active=True
-            )
-            db.add(monthly_data)
-        
-        db.commit()
-        st.success("✅ Sample data loaded successfully!")
-        
-    except Exception as e:
-        st.error(f"Error loading sample data: {e}")
-        db.rollback()
-    finally:
-        db.close()
+    st.error("Sample data loading has been disabled. Use the scraper to collect real data.")
 
 def show_sample_data():
     """Show sample data when database is not available"""
-    st.info("Showing sample data (database not available)")
-    
-    # Sample data
-    sample_companies = [
-        {"Name": "Sample Restaurant 1", "Category": "Restaurant", "Rating": "4.5"},
-        {"Name": "Sample Restaurant 2", "Category": "Restaurant", "Rating": "4.2"},
-        {"Name": "Sample Restaurant 3", "Category": "Restaurant", "Rating": "4.8"}
-    ]
-    
-    df = pd.DataFrame(sample_companies)
-    st.dataframe(df, use_container_width=True)
+    st.error("Database not available. Please check your database connection.")
+    st.info("No sample data will be displayed. Use the scraper to collect real data.")
 
 if __name__ == "__main__":
     main()

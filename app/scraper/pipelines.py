@@ -133,9 +133,9 @@ class DatabasePipeline:
             
             # Check if contact already exists
             existing_contact = None
-            if contact_data.get('email'):
+            if contact_data.get('phone'):
                 existing_contact = session.query(Contact).filter(
-                    Contact.email == contact_data['email'],
+                    Contact.phone == contact_data['phone'],
                     Contact.company_id == company.id
                 ).first()
             
@@ -162,7 +162,7 @@ class DatabasePipeline:
             )
             session.add(monthly_data)
             
-            logger.info(f"Processed contact: {contact.email or contact.phone}")
+            logger.info(f"Processed contact: {contact.phone}")
             
         except Exception as e:
             logger.error(f"Error processing contact item: {e}")

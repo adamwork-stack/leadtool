@@ -8,24 +8,95 @@ import plotly.express as px
 import subprocess
 import os
 import sys
+import yaml
 from datetime import datetime
 from app.models.database import SessionLocal, Company, Contact, MonthlyData
 
-def run_scraper():
-    """Run the scraper and return status"""
+def load_config():
+    """Load scraping configuration"""
+    config_path = 'config/sites.yaml'
     try:
-        # Run the scraper command
-        result = subprocess.run(
+        with open(config_path, 'r', encoding='utf-8') as f:
+            return yaml.safe_load(f)
+    except FileNotFoundError:
+        return {'search_queries': []}
+
+def save_config(config):
+    """Save configuration to file"""
+    config_path = 'config/sites.yaml'
+    with open(config_path, 'w', encoding='utf-8') as f:
+        yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
+
+def run_scraper():
+    """Run the scraper with visual browser tabs"""
+    try:
+        # Load current queries
+        config = load_config()
+        current_queries = config.get('search_queries', [])
+        
+        if not current_queries:
+            return False, "No search queries configured"
+        
+        st.subheader("🌐 Opening Google Maps in Browser")
+        
+        # Create progress tracking
+        progress_placeholder = st.empty()
+        output_placeholder = st.empty()
+        
+        # Show URLs for manual opening (optional)
+        st.write("**Google Maps URLs (open manually if you want to watch):**")
+        for i, query in enumerate(current_queries):
+            keywords = query.get('keywords', '')
+            location = query.get('location', '')
+            query_name = query.get('name', f'Query {i+1}')
+            
+            # Build Google Maps URL
+            search_query = f"{keywords} in {location}"
+            encoded_query = search_query.replace(' ', '%20')
+            maps_url = f"https://www.google.com/maps/search/{encoded_query}"
+            
+            st.write(f"**{query_name}:** {maps_url}")
+            
+            # Optional: Open in browser if user wants
+            if st.button(f"Open {query_name} in Browser", key=f"open_{i}"):
+                try:
+                    import webbrowser
+                    webbrowser.open_new_tab(maps_url)
+                    st.write(f"✅ Opened: {query_name}")
+                except Exception as e:
+                    st.write(f"❌ Failed to open: {str(e)}")
+        
+        # Now run the actual scraper
+        st.write("**Now running the scraper in the background...**")
+        
+        # Run scraper command
+        process = subprocess.Popen(
             [sys.executable, "run.py", "scraper"],
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
-            cwd=os.getcwd()
+            cwd=os.getcwd(),
+            bufsize=1,
+            universal_newlines=True
         )
         
-        if result.returncode == 0:
-            return True, "Scraper completed successfully!"
+        output_lines = []
+        
+        # Read output line by line
+        for line in iter(process.stdout.readline, ''):
+            if line:
+                output_lines.append(line.strip())
+                # Show last 10 lines
+                recent_output = '\n'.join(output_lines[-10:])
+                output_placeholder.text_area("Scraper Output", recent_output, height=200)
+        
+        process.wait()
+        
+        if process.returncode == 0:
+            return True, "Scraper completed successfully! The Playwright browser has been closed automatically. Check the dashboard for scraped data."
         else:
-            return False, f"Scraper failed: {result.stderr}"
+            return False, f"Scraper failed with return code {process.returncode}"
+            
     except Exception as e:
         return False, f"Error running scraper: {str(e)}"
 
@@ -33,21 +104,7 @@ def main():
     """Simple dashboard that reads directly from database"""
     st.title("📊 LeadTool Dashboard")
     st.markdown("Unified Lead Generation and Management System")
-    
-    # Debug info
-    st.sidebar.info("✅ Using simple_dashboard.py (Database Direct)")
-    
-    # Add scraping controls
-    st.sidebar.header("🕷️ Scraping Controls")
-    
-    if st.sidebar.button("🚀 Run Scraper", type="primary"):
-        with st.spinner("Running scraper..."):
-            success, message = run_scraper()
-            if success:
-                st.sidebar.success(message)
-                st.rerun()  # Refresh the page to show new data
-            else:
-                st.sidebar.error(message)
+        
     
     # Show last scraping info
     st.sidebar.markdown("---")
@@ -66,43 +123,64 @@ def main():
     finally:
         db.close()
     
-    # Show scraping configuration
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("Scraping Config")
-    
-    # Read current config
-    try:
-        import yaml
-        config_path = "config/sites.yaml"
-        if os.path.exists(config_path):
-            with open(config_path, 'r') as f:
-                config = yaml.safe_load(f)
-            
-            search_queries = config.get('search_queries', [])
-            st.sidebar.write(f"**Active Queries:** {len(search_queries)}")
-            
-            for i, query in enumerate(search_queries[:3]):  # Show first 3
-                st.sidebar.write(f"• {query.get('name', 'Unknown')}")
-            
-            if len(search_queries) > 3:
-                st.sidebar.write(f"... and {len(search_queries) - 3} more")
-        else:
-            st.sidebar.warning("Config file not found")
-    except Exception as e:
-        st.sidebar.error(f"Error reading config: {e}")
-    
     # Add manual scraping options
     st.sidebar.markdown("---")
     st.sidebar.subheader("Manual Search")
     
-    with st.sidebar.form("manual_search"):
-        keywords = st.text_input("Keywords", value="restaurants")
-        location = st.text_input("Location", value="New York, NY")
-        max_results = st.number_input("Max Results", value=50, min_value=1, max_value=500)
+    # Load current configuration
+    config = load_config()
+    current_queries = config.get('search_queries', [])
+    
+    # Add new search query form
+    with st.sidebar.form("add_search_query"):
+        st.write("**Add Search Query**")
+        query_name = st.text_input("Query Name", placeholder="e.g., Restaurants in NYC")
+        keywords = st.text_input("Keywords", placeholder="e.g., restaurants")
+        location = st.text_input("Location", placeholder="e.g., New York, NY")
         
-        if st.form_submit_button("🔍 Search Now"):
-            # This would trigger a custom search
-            st.sidebar.info("Custom search feature coming soon!")
+        if st.form_submit_button("Add Query"):
+            if query_name and keywords and location:
+                new_query = {
+                    'name': query_name,
+                    'keywords': keywords,
+                    'location': location
+                }
+                current_queries.append(new_query)
+                config['search_queries'] = current_queries
+                save_config(config)
+                st.success(f"Added: {query_name}")
+                st.rerun()
+            else:
+                st.error("Please fill in all fields")
+    
+    # Display current queries
+    if current_queries:
+        st.sidebar.write("**Current Queries:**")
+        for i, query in enumerate(current_queries):
+            with st.sidebar.expander(f"{query.get('name', 'Unnamed')}"):
+                st.write(f"Keywords: {query.get('keywords', 'N/A')}")
+                st.write(f"Location: {query.get('location', 'N/A')}")
+                if st.button("Delete", key=f"delete_{i}"):
+                    current_queries.pop(i)
+                    config['search_queries'] = current_queries
+                    save_config(config)
+                    st.rerun()
+    
+    # Scraper button
+    if st.sidebar.button("🚀 Run Scraper", type="primary"):
+        if not current_queries:
+            st.sidebar.warning("Please add search queries first")
+        else:
+            with st.spinner("Running scraper..."):
+                success, message = run_scraper()
+                if success:
+                    st.sidebar.success(message)
+                    st.rerun()  # Refresh the page to show new data
+                else:
+                    st.sidebar.error(message)
+    
+    # Show query count
+    st.sidebar.write(f"**Total Queries:** {len(current_queries)}")
     
     # Get data directly from database
     db = SessionLocal()
@@ -126,12 +204,12 @@ def main():
             st.metric("Total Contacts", len(contacts))
         
         with col3:
-            contacts_with_emails = len([c for c in contacts if c.email])
-            st.metric("Contacts with Emails", contacts_with_emails)
+            contacts_with_phones = len([c for c in contacts if c.phone])
+            st.metric("Contacts with Phones", contacts_with_phones)
         
         with col4:
-            email_rate = (contacts_with_emails / max(len(contacts), 1)) * 100
-            st.metric("Email Coverage", f"{email_rate:.1f}%")
+            phone_rate = (contacts_with_phones / max(len(contacts), 1)) * 100
+            st.metric("Phone Coverage", f"{phone_rate:.1f}%")
         
         # Display companies table
         st.subheader("Companies")
@@ -143,8 +221,8 @@ def main():
                     "Name": company.name,
                     "Category": company.category or "N/A",
                     "Address": company.address or "N/A",
-                    "Phone": company.phone or "N/A",
                     "Website": company.website or "N/A",
+                    "Phone": company.phone or "N/A",
                     "Rating": company.rating or "N/A",
                     "Review Count": company.review_count or "N/A",
                     "Source": company.source or "N/A"

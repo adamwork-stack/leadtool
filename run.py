@@ -69,7 +69,7 @@ def run_dashboard():
             python_exe, "-m", "streamlit", "run", 
             dashboard_file,
             "--server.port", "8501",
-            "--server.address", "0.0.0.0"
+            "--server.address", "localhost"
         ], check=True)
     except subprocess.CalledProcessError:
         print("Trying alternative Python paths...")
@@ -88,7 +88,7 @@ def run_dashboard():
                     python_path, "-m", "streamlit", "run", 
                     dashboard_file,
                     "--server.port", "8501",
-                    "--server.address", "0.0.0.0"
+                    "--server.address", "localhost"
                 ], check=True)
                 break
             except (subprocess.CalledProcessError, FileNotFoundError):

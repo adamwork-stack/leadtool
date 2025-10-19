@@ -18,7 +18,6 @@ router = APIRouter()
 async def get_contacts(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
-    email: Optional[str] = None,
     company_id: Optional[int] = None,
     title: Optional[str] = None,
     department: Optional[str] = None,
@@ -29,8 +28,6 @@ async def get_contacts(
     query = db.query(Contact)
     
     # Apply filters
-    if email:
-        query = query.filter(Contact.email.ilike(f"%{email}%"))
     if company_id:
         query = query.filter(Contact.company_id == company_id)
     if title:
@@ -60,14 +57,6 @@ async def create_contact(contact: ContactCreate, db: Session = Depends(get_db)):
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
     
-    # Check if contact with same email already exists for this company
-    if contact.email:
-        existing = db.query(Contact).filter(
-            Contact.email == contact.email,
-            Contact.company_id == contact.company_id
-        ).first()
-        if existing:
-            raise HTTPException(status_code=400, detail="Contact with this email already exists for this company")
     
     db_contact = Contact(**contact.dict())
     db.add(db_contact)
@@ -113,10 +102,9 @@ async def search_contacts(
     limit: int = Query(100, ge=1, le=1000),
     db: Session = Depends(get_db)
 ):
-    """Search contacts by email, name, or title"""
+    """Search contacts by name or title"""
     query = db.query(Contact).filter(
         or_(
-            Contact.email.ilike(f"%{q}%"),
             Contact.first_name.ilike(f"%{q}%"),
             Contact.last_name.ilike(f"%{q}%"),
             Contact.title.ilike(f"%{q}%"),
@@ -144,12 +132,12 @@ async def get_contact_stats(db: Session = Depends(get_db)):
         db.func.count(Contact.id).label('count')
     ).group_by(Contact.department).all()
     
-    # Get contacts with emails
-    contacts_with_emails = db.query(Contact).filter(Contact.email.isnot(None)).count()
+    # Get contacts with phones
+    contacts_with_phones = db.query(Contact).filter(Contact.phone.isnot(None)).count()
     
     return {
         "total_contacts": total_contacts,
-        "contacts_with_emails": contacts_with_emails,
+        "contacts_with_phones": contacts_with_phones,
         "by_title": [{"title": i[0], "count": i[1]} for i in title_stats if i[0]],
         "by_department": [{"department": i[0], "count": i[1]} for i in department_stats if i[0]]
     }

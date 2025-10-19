@@ -34,8 +34,16 @@ class GoogleMapsSpider(scrapy.Spider):
     
     def start_requests(self):
         """Generate initial requests for each search query"""
-        for query in self.search_queries:
+        print(f"\nStarting scraper with {len(self.search_queries)} search queries")
+        
+        for i, query in enumerate(self.search_queries, 1):
+            print(f"\nQuery {i}/{len(self.search_queries)}: {query.get('name', 'Unnamed')}")
+            print(f"   Keywords: {query.get('keywords', 'N/A')}")
+            print(f"   Location: {query.get('location', 'N/A')}")
+            
             search_url = self.build_search_url(query)
+            print(f"   URL: {search_url}")
+            
             yield Request(
                 url=search_url,
                 callback=self.parse,
@@ -43,7 +51,8 @@ class GoogleMapsSpider(scrapy.Spider):
                     'playwright': True,
                     'playwright_page_methods': [
                         PageMethod('wait_for_load_state', 'networkidle'),
-                        PageMethod('wait_for_timeout', 5000)
+                        PageMethod('wait_for_timeout', 5000),
+                        PageMethod('evaluate', 'window.scraper_page = this;')  # Make page available
                     ],
                     'query_config': query,
                     'google_maps_config': self.config.get('google_maps', {})
@@ -64,11 +73,85 @@ class GoogleMapsSpider(scrapy.Spider):
         google_maps_config = response.meta['google_maps_config']
         
         self.logger.info(f"Processing search query: {query_config.get('name', 'Unknown')}")
+        print(f"\nProcessing: {query_config.get('name', 'Unknown')}")
+        print(f"URL: {response.url}")
+        print("Waiting 5 seconds so you can see the browser...")
+        time.sleep(5)  # Pause so you can see the browser
         
-        # Extract business listings directly
+        # Get the page object for interactions
+        page = response.meta.get('playwright_page')
+        if not page:
+            # Try to get page from browser context
+            try:
+                page = response.meta.get('playwright_browser_context').pages[0]
+            except:
+                print("Could not access page object")
+                page = None
+        
+        if page:
+            print("Starting interactive scraping...")
+            
+            # Wait for results to load
+            try:
+                page.wait_for_selector('[data-result-index]', timeout=10000)
+                print("Found search results, starting to scroll...")
+            except:
+                print("No results found or timeout waiting for results")
+            
+            # Scroll through results multiple times
+            for scroll_attempt in range(5):
+                print(f"Scroll attempt {scroll_attempt + 1}/5")
+                
+                # Scroll down to load more results
+                page.evaluate("""
+                    const scrollContainer = document.querySelector('.m6QErb') || 
+                                         document.querySelector('[role="main"]') ||
+                                         document.querySelector('.section-scrollbox');
+                    if (scrollContainer) {
+                        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+                    } else {
+                        window.scrollTo(0, document.body.scrollHeight);
+                    }
+                """)
+                
+                # Wait for new results to load
+                time.sleep(3)
+                
+                # Try to click on some business listings
+                try:
+                    business_links = page.query_selector_all('a[href*="/maps/place/"]')
+                    print(f"Found {len(business_links)} business links")
+                    
+                    # Click on first few business listings
+                    for i, link in enumerate(business_links[:3]):
+                        try:
+                            print(f"Clicking on business {i+1}")
+                            link.click()
+                            time.sleep(2)  # Wait for details to load
+                            
+                            # Try to extract business details from the opened panel
+                            business_name = page.query_selector('h1') or page.query_selector('.x3AX1-LfntMc-header-title-title')
+                            if business_name:
+                                print(f"  Business name: {business_name.inner_text()}")
+                            
+                            # Go back to results
+                            page.go_back()
+                            time.sleep(2)
+                            
+                        except Exception as e:
+                            print(f"  Error clicking business {i+1}: {e}")
+                            continue
+                            
+                except Exception as e:
+                    print(f"Error finding business links: {e}")
+        
+        # Extract business listings using the updated method
         businesses = self.extract_businesses(response, google_maps_config)
         
-        for business_data in businesses:
+        print(f"Found {len(businesses)} businesses")
+        
+        for i, business_data in enumerate(businesses, 1):
+            print(f"  {i}. {business_data.get('name', 'Unknown')} - {business_data.get('category', 'N/A')}")
             # Store business data as company
             yield {
                 'type': 'company',
@@ -77,6 +160,15 @@ class GoogleMapsSpider(scrapy.Spider):
                 'query_name': query_config.get('name', ''),
                 'data': business_data
             }
+        
+        # Close browser after scraping is complete
+        if page:
+            print("Scraping completed, closing browser...")
+            try:
+                page.close()
+                print("Browser tab closed successfully")
+            except Exception as e:
+                print(f"Error closing browser: {e}")
     
     def scroll_and_parse(self, response):
         """Scroll through results and extract business data"""
@@ -121,51 +213,45 @@ class GoogleMapsSpider(scrapy.Spider):
         """Extract business data from Google Maps results"""
         businesses = []
         
-        # For now, let's create some sample data to test the pipeline
-        # This will help us verify that the database and dashboard are working
-        sample_businesses = [
-            {
-                'name': 'Sample Restaurant 1',
-                'category': 'Restaurant',
-                'address': '123 Main St, New York, NY 10001',
-                'phone': '+1-555-0123',
-                'website': 'https://samplerestaurant1.com',
-                'rating': 4.5,
-                'review_count': 150,
-                'source': 'Google Maps'
-            },
-            {
-                'name': 'Sample Restaurant 2',
-                'category': 'Restaurant',
-                'address': '456 Broadway, New York, NY 10002',
-                'phone': '+1-555-0456',
-                'website': 'https://samplerestaurant2.com',
-                'rating': 4.2,
-                'review_count': 89,
-                'source': 'Google Maps'
-            },
-            {
-                'name': 'Sample Restaurant 3',
-                'category': 'Restaurant',
-                'address': '789 5th Ave, New York, NY 10003',
-                'phone': '+1-555-0789',
-                'website': 'https://samplerestaurant3.com',
-                'rating': 4.8,
-                'review_count': 203,
-                'source': 'Google Maps'
-            }
-        ]
+        # Try to extract real data from Google Maps
+        try:
+            businesses = self.extract_businesses_fallback(response, google_maps_config)
+            if not businesses:
+                self.logger.warning("No businesses found with fallback method")
+        except Exception as e:
+            self.logger.error(f"Error extracting businesses: {e}")
         
-        self.logger.info(f"Using sample data: {len(sample_businesses)} businesses")
-        return sample_businesses
+        self.logger.info(f"Extracted {len(businesses)} businesses")
+        return businesses
     
     def extract_businesses_fallback(self, response, google_maps_config):
         """Fallback method using CSS selectors"""
         businesses = []
         selectors = google_maps_config.get('selectors', {})
         
-        # Find all business listings
-        business_listings = response.css(selectors.get('business_listing', '[data-result-index]'))
+        # Try multiple selector patterns
+        business_listing_selectors = [
+            selectors.get('business_listing', '[data-result-index]'),
+            '.Nv2PK',
+            '.VkpGBb', 
+            '.lI9IFe',
+            '[data-result-index]',
+            '.section-result',
+            '.search-result'
+        ]
+        
+        business_listings = []
+        for selector in business_listing_selectors:
+            listings = response.css(selector)
+            if listings:
+                business_listings = listings
+                self.logger.info(f"Found {len(listings)} listings with selector: {selector}")
+                break
+        
+        if not business_listings:
+            # Try to find any business-like elements
+            business_listings = response.css('div').css('a[href*="/maps/place/"]').getall()
+            self.logger.warning(f"No business listings found with standard selectors. Found {len(business_listings)} potential links")
         
         for listing in business_listings:
             business_data = self.extract_business_data(listing, selectors)
@@ -245,6 +331,12 @@ class GoogleMapsSpider(scrapy.Spider):
         except:
             pass
         return None
+    
+    def closed(self, spider):
+        """Called when the spider is closed"""
+        print("Spider finished, cleaning up browser...")
+        # The browser will be automatically closed by Scrapy-Playwright
+        print("Returning to dashboard...")
     
     def get_scroll_script(self):
         """Get JavaScript to scroll the results container"""

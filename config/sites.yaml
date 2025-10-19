@@ -1,82 +1,41 @@
-# LeadTool Google Maps Configuration
-# Configure Google Maps search queries for business data collection
-
-search_queries:
-  - name: "Restaurants in New York"
-    keywords: "restaurants"
-    location: "New York, NY"
-    max_results: 100
-    
-  - name: "Plumbers in Los Angeles"
-    keywords: "plumbers"
-    location: "Los Angeles, CA"
-    max_results: 50
-    
-  - name: "Dentists in Chicago"
-    keywords: "dentists"
-    location: "Chicago, IL"
-    max_results: 75
-    
-  - name: "Lawyers in Miami"
-    keywords: "lawyers"
-    location: "Miami, FL"
-    max_results: 60
-    
-  - name: "Gyms in Seattle"
-    keywords: "gyms"
-    location: "Seattle, WA"
-    max_results: 40
-
-# Google Maps specific settings
 google_maps:
-  base_url: "https://www.google.com/maps"
-  search_url: "https://www.google.com/maps/search/{query}"
-  
-  # Selectors for business data extraction
-  selectors:
-    business_listing: ".Nv2PK"
-    business_name: ".Nv2PK .fontHeadlineSmall::text"
-    business_category: ".Nv2PK .fontBodyMedium::text"
-    business_address: ".Nv2PK .fontBodyMedium::text"
-    business_phone: ".Nv2PK a[href^='tel:']::attr(href)"
-    business_website: ".Nv2PK a[href^='http']::attr(href)"
-    business_rating: ".Nv2PK .fontDisplayLarge::text"
-    business_review_count: ".Nv2PK .fontBodyMedium::text"
-    
-  # Pagination and scrolling
+  base_url: https://www.google.com/maps
   pagination:
-    scroll_container: ".m6QErb"
-    load_more_button: "[data-value='Show more results']"
-    scroll_pause: 2  # seconds to wait after scrolling
-    
-  # Search behavior
+    load_more_button: '[data-value=''Show more results'']'
+    scroll_container: .m6QErb
+    scroll_pause: 2
   search_settings:
-    wait_for_results: 5  # seconds to wait for search results
     max_scroll_attempts: 10
     scroll_pause_time: 2
-
-# Global scraping settings
+    wait_for_results: 5
+  search_url: https://www.google.com/maps/search/{query}
+  selectors:
+    business_address: .W4Efsd, .fontBodyMedium, .W4Efsd::text
+    business_category: .fontBodyMedium, .W4Efsd, .fontBodyMedium::text
+    business_listing: '[data-result-index], .Nv2PK, .VkpGBb, .lI9IFe'
+    business_name: h3, .fontHeadlineSmall, .qBF1Pd, .fontHeadlineSmall::text
+    business_phone: a[href^='tel:']::attr(href), .fontBodyMedium a[href^='tel:']::attr(href)
+    business_rating: .fontDisplayLarge, .MW4etd, .fontDisplayLarge::text
+    business_review_count: .fontBodyMedium, .UY7F9, .fontBodyMedium::text
+    business_website: a[href^='http']::attr(href), .fontBodyMedium a[href^='http']::attr(href)
+search_queries:
+- keywords: Restaurant
+  location: Florida
+  name: Restaurant in Florida
 settings:
-  # Delay between requests (seconds)
-  delay: 2
-  
-  # Maximum pages to scrape per site
-  max_pages: 10
-  
-  # User agent for requests
-  user_agent: "LeadTool/1.0 (+https://leadtool.example.com)"
-  
-  # Respect robots.txt
-  respect_robots: false
-  
-  # Concurrent requests
   concurrent_requests: 16
   concurrent_requests_per_domain: 8
-  
-  # Timeout settings
-  download_timeout: 30
+  delay: 2
   download_delay: 1
-  
-  # Retry settings
+  download_timeout: 30
+  max_pages: 10
+  respect_robots: false
+  retry_http_codes:
+  - 500
+  - 502
+  - 503
+  - 504
+  - 408
+  - 429
   retry_times: 3
-  retry_http_codes: [500, 502, 503, 504, 408, 429]
+  user_agent: LeadTool/1.0 (+https://leadtool.example.com)
